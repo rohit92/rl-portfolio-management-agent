@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent: runs the trading agent once per weekday near the US close.
+
+  Install:
+    cp com.rohitraj.livetradingagent.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.rohitraj.livetradingagent.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.rohitraj.livetradingagent.plist
+
+  Times are your Mac's LOCAL time. 15:45 below assumes you are on US Eastern.
+  Adjust the Hour keys if your Mac runs in another timezone.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.rohitraj.livetradingagent</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/rohitraj/rl-trading-agent/live_agent/run_daily.sh</string>
+  </array>
+
+  <!-- Fire Monday–Friday at 15:45 local time. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/launchd.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/launchd.err</string>
+
+  <!-- Do not trade the moment the agent is loaded; wait for a scheduled time. -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

@@ -1,0 +1,48 @@
+# =============================================================================
+# RL-Based Portfolio Management Agent — Master Configuration
+# =============================================================================
+# All hyperparameters are defined here. NOTHING is hardcoded in source files.
+# This ensures reproducibility and clean experimentation across runs.
+# =============================================================================
+
+# ---- PPO Hyperparameters ----
+# These follow the PPO paper (Schulman et al., 2017) defaults with minor tuning.
+learning_rate: 0.0003          # Adam optimizer LR; 3e-4 is PPO default
+n_steps: 2048                  # Rollout buffer size per update cycle
+batch_size: 64                 # Minibatch size for each gradient step
+n_epochs: 10                   # Number of passes over rollout buffer per update
+gamma: 0.99                    # Discount factor — standard for finite-horizon MDPs
+gae_lambda: 0.95               # GAE lambda for advantage estimation
+clip_range: 0.2                # PPO clipping range for surrogate objective
+total_timesteps: 500000        # Total environment steps for training
+eval_freq: 10000               # Steps between validation evaluations
+
+# ---- Environment ----
+lookback_window: 20            # Days of market history in each observation
+initial_portfolio_value: 10000 # Starting capital in USD
+transaction_cost: 0.001        # 10 basis points per trade (realistic for retail)
+volatility_penalty_weight: 0.1 # Weight of volatility penalty in reward
+
+# ---- Data ----
+ticker: "AAPL"
+train_start: "2010-01-01"
+train_end: "2020-12-31"
+val_start: "2021-01-01"
+val_end: "2022-12-31"
+test_start: "2023-01-01"
+test_end: "2023-12-31"
+
+# ---- Reproducibility ----
+seed: 42                       # Global random seed for all components
+
+# ---- Network Architecture ----
+# Two hidden layers of 256 units each — sufficient for tabular-like features.
+# Deeper architectures risk overfitting on daily financial data.
+net_arch:
+  - 256
+  - 256
+
+# ---- Logging ----
+tensorboard_log_dir: "runs/"   # TensorBoard log directory
+checkpoint_dir: "checkpoints/" # Model checkpoint directory
+results_dir: "results/"        # Output plots and metrics directory

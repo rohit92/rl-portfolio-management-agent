@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Live signal poller — every 30 min, scan the open markets (crypto 24/7; NSE on
+  weekdays 09:15–15:30 IST) for the strongest signals and push STRONG ones to
+  your phone. Requires TELEGRAM_* or WHATSAPP_* in .env (else it logs locally).
+
+  Install:
+    cp com.rohitraj.signals.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.rohitraj.signals.plist
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.rohitraj.signals.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.rohitraj.signals</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/rohitraj/rl-trading-agent/live_agent/run_signals.sh</string>
+  </array>
+  <key>StartInterval</key><integer>1800</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/signals.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/signals.err</string>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>

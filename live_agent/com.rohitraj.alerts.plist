@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Check price-level alerts every 30 minutes and fire macOS notifications.
+
+  Install:
+    cp com.rohitraj.alerts.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.rohitraj.alerts.plist
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.rohitraj.alerts.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.rohitraj.alerts</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/rohitraj/rl-trading-agent/live_agent/run_alerts.sh</string>
+  </array>
+  <key>StartInterval</key><integer>1800</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/alerts.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/alerts.err</string>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>

@@ -1,0 +1,34 @@
+/* Trading Agent Signals — floating panel (dark, high z-index, chart-friendly) */
+.ta-panel{
+  position:fixed; right:16px; bottom:16px; z-index:2147483000; width:280px;
+  background:#0d1117ee; border:1px solid #30363d; border-radius:14px;
+  color:#e6edf3; font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  box-shadow:0 8px 30px rgba(0,0,0,.55); backdrop-filter:blur(6px);
+}
+.ta-head{display:flex;align-items:center;gap:8px;padding:9px 12px;
+  border-bottom:1px solid #30363d;cursor:default}
+.ta-logo{font-weight:700}
+.ta-sym{color:#8b949e;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis}
+.ta-toggle{background:none;border:0;color:#8b949e;cursor:pointer;font-size:13px}
+.ta-min .ta-body{display:none}
+.ta-min{width:auto}
+.ta-body{padding:12px}
+.ta-load{color:#8b949e;text-align:center;padding:10px 0}
+.ta-err{color:#f85149;text-align:center;padding:6px 0;font-weight:600}
+.ta-verdict{font-size:18px;font-weight:800;text-align:center}
+.ta-buy{color:#3fb950}.ta-sell{color:#f85149}.ta-wait{color:#d29922}
+.ta-why{color:#8b949e;font-size:11.5px;text-align:center;margin:5px 0 8px}
+.ta-tfs{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+.ta-tf{background:#161b22;border:1px solid #30363d;border-radius:6px;
+  padding:2px 8px;font-size:11px;color:#8b949e}
+.ta-tf.ta-g{color:#3fb950;border-color:#1c5631}
+.ta-tf.ta-r{color:#f85149;border-color:#5c2226}
+.ta-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ta-grid>div{background:#161b22;border:1px solid #30363d;border-radius:8px;
+  padding:7px 9px;display:flex;flex-direction:column}
+.ta-grid b{font-size:13.5px}
+.ta-grid span{color:#8b949e;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.ta-note{color:#8b949e;font-size:11px;text-align:center;margin-top:9px}
+.ta-note a{color:#58a6ff;text-decoration:none}
+.ta-disc{color:#6e7681;font-size:10px;text-align:center;margin-top:6px;
+  border-top:1px solid #21262d;padding-top:6px}

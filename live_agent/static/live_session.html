@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔴 Live paper session — $500 @ 20x</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--line:#30363d;--text:#e6edf3;
+        --muted:#8b949e;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:18px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px} h1 .dot{color:var(--red)}
+  .sub{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .hero{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .eq{font-size:38px;font-weight:800}
+  .pnl{font-size:20px;font-weight:700}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--muted)}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;border:1px solid var(--line);background:var(--panel2)}
+  .pill.run{color:var(--green);border-color:#1c5631}
+  .pill.done{color:var(--amber)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-top:12px}
+  .st{background:var(--panel2);border-radius:8px;padding:8px 10px}
+  .st .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .st .v{font-size:15px;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--muted);font-weight:600;text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase}
+  td{padding:6px 8px;border-bottom:1px solid #21262d}
+  .badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .b-s{background:#2a1416;color:var(--red)} .b-b{background:#10301c;color:var(--green)}
+  h2{font-size:14px;margin:0 0 10px}
+  .scroll{overflow-x:auto}
+  .foot{color:var(--muted);font-size:11px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot">●</span> Live paper session <span class="mut" style="font-weight:400;font-size:13px" id="hdrsub">crypto · 20x · shorts on · breaker −75%</span></h1>
+  <div class="sub">Autonomous <b>adaptive v2</b> engine traded by Claude — compounding size · trailing/breakeven stops · tape memory (2 stop-outs = symbol banned). Real Binance 5m prices, simulated money. Auto-refreshes every 5s. <span id="upd"></span></div>
+
+  <div class="card">
+    <div class="hero">
+      <div class="eq" id="eq">—</div>
+      <div class="pnl" id="pnl">—</div>
+      <span class="pill" id="status">loading…</span>
+      <span class="mut" id="left"></span>
+    </div>
+    <div class="grid" id="stats"></div>
+    <div id="curve" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Open positions <span class="mut" id="npos"></span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>Qty</th><th>Stop</th><th>Target</th><th>Lev</th><th>Conv</th></tr></thead>
+      <tbody id="posb"><tr><td colspan="8" class="mut">—</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>Fills (latest first)</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Time</th><th>Action</th><th>Symbol</th><th>Price</th><th>Qty</th><th>P&amp;L</th></tr></thead>
+      <tbody id="trdb"><tr><td colspan="6" class="mut">—</td></tr></tbody>
+    </table></div>
+    <div class="foot">Paper money. Fees 0.1%/side modeled. Stops 1.5× expected move, targets 2.5× — most positions
+      square off at session end. Signals measure ~48–55% historically; this is risk-managed variance, not a promise.</div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const nm=x=>x==null?'—':(+x).toLocaleString(undefined,{maximumFractionDigits:4});
+function curveSVG(c,cap){
+  if(!c||c.length<2) return '';
+  const W=800,H=160,pl=46,pr=8,pt=8,pb=18;
+  const vs=c.map(p=>p.equity), lo=Math.min(...vs,cap), hi=Math.max(...vs,cap), sp=(hi-lo)||1;
+  const x=i=>pl+(W-pl-pr)*i/(c.length-1), y=v=>pt+(H-pt-pb)*(1-(v-lo)/sp);
+  const line=c.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.equity).toFixed(1)}`).join('');
+  const base=`<line x1="${pl}" y1="${y(cap)}" x2="${W-pr}" y2="${y(cap)}" stroke="#8b949e" stroke-width=".6" stroke-dasharray="3 3"/><text x="4" y="${y(cap)+4}" fill="#8b949e" font-size="10">$${cap.toFixed(0)}</text>`;
+  const last=vs[vs.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">${base}
+    <text x="4" y="${y(hi)+9}" fill="#8b949e" font-size="10">${hi.toFixed(0)}</text>
+    <text x="4" y="${y(lo)}" fill="#8b949e" font-size="10">${lo.toFixed(0)}</text>
+    <path d="${line}" fill="none" stroke="${last>=cap?'#3fb950':'#f85149'}" stroke-width="2"/></svg>`;
+}
+async function tick(){
+  let d; try{ d=await (await fetch('/static/session_state.json?ts='+Date.now(),{cache:'no-store'})).json(); }
+  catch(e){ $('upd').textContent='(waiting for snapshot…)'; return; }
+  const up=d.pnl>=0;
+  $('eq').textContent='$'+(+d.equity).toFixed(2);
+  $('eq').className='eq '+(up?'pos':'neg');
+  $('pnl').textContent=(d.pnl>=0?'+':'')+(+d.pnl).toFixed(2)+' ('+(d.pnl_pct>=0?'+':'')+d.pnl_pct+'%)';
+  $('pnl').className='pnl '+(up?'pos':'neg');
+  const st=$('status');
+  st.textContent=d.status.toUpperCase()+(d.message?' — '+d.message:'');
+  st.className='pill '+(d.status==='running'?'run':'done');
+  $('left').textContent=d.status==='running'?Math.floor(d.seconds_left/60)+'m '+(d.seconds_left%60)+'s left':'';
+  $('upd').textContent='last tick '+(d.last_update||'—');
+  const S=(k,v,c)=>`<div class="st"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`;
+  $('stats').innerHTML=
+    S('Cash (free margin)','$'+(+d.cash).toFixed(2))+
+    S('Realised P&L',(d.realized>=0?'+':'')+(+d.realized).toFixed(2),d.realized>0?'pos':d.realized<0?'neg':'')+
+    S('Peak equity','$'+(+d.hwm).toFixed(2))+
+    S('Drawdown',d.drawdown_pct+'%',d.drawdown_pct>10?'neg':'')+
+    S('Breaker','−'+d.max_dd_pct+'%')+
+    S('Leverage',d.leverage+'x');
+  $('curve').innerHTML=curveSVG(d.curve, +d.capital);
+  $('hdrsub').textContent='$'+(+d.capital).toFixed(2)+' · crypto · '+d.leverage+'x · shorts on · breaker −'+d.max_dd_pct+'%';
+  $('npos').textContent='('+d.n_positions+'/5 · sized from live equity)';
+  $('posb').innerHTML=(d.positions&&d.positions.length)?d.positions.map(p=>`<tr>
+    <td><b>${p.symbol}</b></td>
+    <td><span class="badge ${p.side==='SELL'?'b-s':'b-b'}">${p.side}</span></td>
+    <td>${nm(p.entry)}</td><td>${nm(p.qty)}</td><td>${nm(p.stop)}</td><td>${nm(p.target)}</td>
+    <td>${p.leverage}x</td><td>${p.conviction??'—'}</td></tr>`).join('')
+    :'<tr><td colspan="8" class="mut">flat — waiting for a signal</td></tr>';
+  $('trdb').innerHTML=(d.trades&&d.trades.length)?d.trades.map(t=>`<tr>
+    <td class="mut">${t.t}</td>
+    <td><span class="badge ${t.action.includes('SELL')||t.action.includes('stop')||t.action.includes('LIQ')?'b-s':'b-b'}">${t.action}</span></td>
+    <td><b>${t.symbol}</b></td><td>${nm(t.price)}</td><td>${nm(t.qty)}</td>
+    <td class="${t.pnl>0?'pos':t.pnl<0?'neg':'mut'}">${t.pnl==null?'—':(t.pnl>0?'+':'')+t.pnl.toFixed(2)}</td></tr>`).join('')
+    :'<tr><td colspan="6" class="mut">no fills yet</td></tr>';
+}
+tick(); setInterval(tick,5000);
+</script>
+</body>
+</html>
