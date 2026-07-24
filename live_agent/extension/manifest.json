@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Trading Agent Signals",
+  "version": "1.0",
+  "description": "Shows your local Trading Agent's signal + full details on any chart you open — Binance, CoinDCX, Groww, Kite, TradingView. Requires the Trading Agent app running on your Mac. Research, not advice.",
+  "icons": { "128": "icon128.png" },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.binance.com/*",
+        "*://*.coindcx.com/*",
+        "*://groww.in/*",
+        "*://*.groww.in/*",
+        "*://kite.zerodha.com/*",
+        "*://*.tradingview.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:5000/*",
+    "http://localhost:5000/*"
+  ]
+}

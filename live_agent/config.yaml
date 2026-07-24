@@ -1,0 +1,205 @@
+# =============================================================================
+# Live Ensemble Trading Agent — Configuration
+# =============================================================================
+# Every tunable lives here. Nothing financial is hardcoded in the source.
+# Read by trader.py and backtest.py at startup.
+# =============================================================================
+
+# ---- Markets & timeframes ----------------------------------------------------
+# The agent is market- and timeframe-agnostic. Each preset below is a tradable
+# "world": a basket of symbols, a bar interval, the right annualisation factor
+# for that interval, and a realistic per-trade cost. ``active_market`` selects
+# which one the live trader + self-learner use; backtest.py can run any one
+# (``--market NAME``) or sweep them all (``--all``).
+#
+#   interval         : yfinance bar size (1d, 1wk, 1h, 30m, 15m, 5m ...)
+#   periods_per_year : bars per year, used to annualise Sharpe/returns correctly
+#   transaction_cost : round-trip-ish proportional cost for that venue
+#
+# NOTE: yfinance caps intraday history (≈730d for 1h, ≈60d for ≤30m, ≈7d for 1m),
+# so intraday presets test on shorter windows. Crypto trades 24/7 (365d/yr).
+active_market: "india_daily"
+
+# ---- Market desks (separation layer) ------------------------------------------
+# Every market is a self-contained "desk": its own pulse board, quick chips,
+# universe segment, instrument classes and default symbols. The dashboard scopes
+# itself to ONE desk at a time. India is the primary desk — options, intraday,
+# futures, commodity ETFs and mutual funds; crypto/US remain available but
+# secondary.
+desks:
+  india:
+    label: "🇮🇳 India"
+    primary: true
+    default_symbol: "RELIANCE.NS"
+    pulse: ["^NSEI", "^BSESN", "^NSEBANK", "^INDIAVIX",
+            "RELIANCE.NS", "HDFCBANK.NS", "TCS.NS", "GOLDBEES.NS"]
+    chips: ["^NSEI", "^NSEBANK", "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS",
+            "SBIN.NS", "GOLDBEES.NS"]
+    universe_segment: "nse"
+    option_chains: ["NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX"]
+    live_market: "nse_intraday"
+    instruments: ["Equity (NSE/BSE)", "Index", "Index & stock options",
+                  "Futures (F&O)", "Commodity ETFs", "Mutual funds", "Intraday"]
+  crypto:
+    label: "₿ Crypto"
+    default_symbol: "BTCUSDT"
+    pulse: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+    chips: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"]
+    universe_segment: "binance"
+    option_chains: ["BTC", "ETH"]
+    live_market: "crypto"
+    instruments: ["Spot", "Perpetual futures", "Options (Deribit)"]
+  us:
+    label: "🇺🇸 US"
+    default_symbol: "AAPL"
+    pulse: ["^GSPC", "^NDX", "^VIX", "AAPL", "NVDA", "MSFT"]
+    chips: ["AAPL", "NVDA", "MSFT", "TSLA", "^GSPC"]
+    universe_segment: ""
+    option_chains: []
+    live_market: ""
+    instruments: ["Equity", "Index"]
+
+markets:
+  us_tech_daily:
+    symbols: [AAPL, MSFT, GOOGL, AMZN, NVDA, META, JPM, XOM]
+    interval: "1d"
+    periods_per_year: 252
+    transaction_cost: 0.001     # ~10 bps retail US equity
+
+  us_weekly:
+    symbols: [AAPL, MSFT, GOOGL, AMZN, NVDA, META, JPM, XOM]
+    interval: "1wk"
+    periods_per_year: 52
+    transaction_cost: 0.001
+
+  crypto_daily:
+    symbols: [BTC-USD, ETH-USD, SOL-USD, BNB-USD, XRP-USD, ADA-USD, DOGE-USD]
+    interval: "1d"
+    periods_per_year: 365       # crypto trades every day
+    transaction_cost: 0.002     # ~20 bps spot crypto
+
+  crypto_hourly:
+    symbols: [BTC-USD, ETH-USD, SOL-USD, BNB-USD]
+    interval: "1h"
+    periods_per_year: 8760      # 24 * 365
+    transaction_cost: 0.002
+
+  india_daily:
+    symbols: [RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS,
+              SBIN.NS, BHARTIARTL.NS, LT.NS]
+    interval: "1d"
+    periods_per_year: 252
+    transaction_cost: 0.0025    # higher Indian frictions (STT+brokerage+slippage)
+
+# ``universe`` is set from the active market at load time; this default is only
+# a fallback if no markets/active_market are configured.
+universe:
+  - AAPL
+  - MSFT
+  - GOOGL
+
+# ---- Decision cadence --------------------------------------------------------
+# This is a DAILY strategy: it makes one decision per trading day. The loop mode
+# wakes shortly before the US market close and rebalances once.
+cadence:
+  decision_time_local: "15:45"   # local clock (your Mac's timezone) ~ near US close
+  poll_seconds: 60               # how often --loop checks whether it's time
+
+# ---- Ensemble brain ----------------------------------------------------------
+# Each signal scores every asset in [-1, +1]. The composite is a weighted blend.
+# Weights need not sum to 1 (they are normalised internally).
+strategy:
+  weights:
+    momentum: 0.40          # trend-following: ride recent winners
+    mean_reversion: 0.30    # buy oversold dips vs. moving average
+    trend: 0.30             # fast/slow MA regime filter
+  momentum_lookback: 60     # trading days for the momentum return
+  momentum_skip: 5          # skip most-recent days (avoid 1-day reversal noise)
+  reversion_window: 20      # MA window for the mean-reversion z-score
+  trend_fast: 20            # fast MA for the trend filter
+  trend_slow: 100           # slow MA for the trend filter
+
+# ---- Risk & position sizing --------------------------------------------------
+risk:
+  entry_threshold: 0.15     # min composite score to hold a name (else weight 0)
+  max_position_weight: 0.25 # cap any single name at 25% of equity
+  max_gross_exposure: 1.00  # total invested <= 100% of equity (NO leverage)
+  vol_target_window: 20     # window for inverse-volatility position scaling
+  rebalance_band: 0.05      # only trade if target vs current weight differs > 5%
+  daily_loss_halt: 0.05     # kill-switch: liquidate + halt if equity falls 5%
+                            #   below its high-water mark
+  transaction_cost: 0.001   # 10 bps per trade, used by SimBroker + backtest
+
+# ---- Pro risk desk (risk_pro.py) ----------------------------------------------
+# The discipline layer for MANUAL / journaled trades: fixed-fractional sizing,
+# a portfolio heat cap, daily loss limits and streak guards — the rules a prop
+# desk enforces on a trader. The measured edge of this whole project is risk
+# control, and this is where it is enforced.
+risk_pro:
+  risk_per_trade_pct: 1.0        # the "1R" — % of equity risked per trade
+  max_open_heat_pct: 5.0         # total open risk across all positions
+  max_daily_loss_r: 3.0          # stop trading for the day at −3R realised
+  max_consecutive_losses: 3      # 3 straight losses -> half size (tilt guard)
+  min_rr: 1.5                    # desk minimum reward:risk on a new trade
+  max_positions_per_market: 3    # concentration guard per market
+
+# ---- Capital -----------------------------------------------------------------
+# Starting cash for the SimBroker and the backtest. The Alpaca paper account
+# uses whatever balance Alpaca assigns (default $100k).
+initial_cash: 100000
+
+# ---- Probabilistic next-day forecasting --------------------------------------
+# forecast.py estimates the *distribution* of tomorrow's move (not the direction)
+# via filtered historical simulation: an EWMA volatility forecast + the empirical
+# distribution of standardised past returns. Validated by calibration, not P&L.
+forecast_universe:
+  - "^NSEI"      # Nifty 50
+  - "^BSESN"     # Sensex
+  - "^NSEBANK"   # Bank Nifty
+  - "^GSPC"      # S&P 500 (deep history, reference)
+  - "^NDX"       # Nasdaq 100
+
+forecast:
+  ewma_lambda: 0.94     # RiskMetrics decay for the volatility forecast
+  resid_window: 750     # trailing window of standardised residuals for the FHS draw
+  drift_window: 250     # trailing window for the (small) mean-return estimate
+  warmup: 300           # bars before the first forecast is made
+  vol_target: 0.12      # annualised vol target for the vol-timing backtest
+  max_leverage: 1.5     # cap on vol-target position size (no runaway leverage)
+
+# ---- Self-learning (walk-forward auto-retraining) ----------------------------
+# auto_learn.py periodically re-fits the ensemble signal weights on a rolling
+# window, validates each candidate on UNSEEN forward data, and only promotes the
+# result if it generalises (median out-of-sample Sharpe clears the gate). The
+# live trader then loads the promoted weights when use_learned_weights is true.
+learning:
+  enabled: true
+  train_days: 252         # in-sample window the optimiser fits on
+  validate_days: 63       # out-of-sample window each candidate is judged on
+  step_days: 63           # how far the walk-forward window advances each fold
+  weight_step: 0.25       # granularity of the weight grid (0.25 -> 15 combos)
+  min_oos_sharpe: 0.30    # promotion gate: median OOS Sharpe must beat this,
+                          #   else keep the hand-set defaults (refuse to overfit)
+  history_years: 5        # how much history to learn from
+
+# Whether the live trader loads promoted weights from state/learned_weights.json.
+# If learning has not produced a promoted set, it silently uses config defaults.
+use_learned_weights: true
+
+# ---- Committee of agents -----------------------------------------------------
+# 31 independent setup-agents (trend / momentum / mean-reversion / breakout /
+# volume / statistical) each vote long/short/flat. The committee acts only when
+# at least `threshold` agree. NOTE from backtests: 25/31 almost never fires
+# (agents are too diverse) — the dashboard lets you tune this and see the
+# frequency-vs-conviction trade-off. Consensus mainly cuts drawdown + overtrading.
+committee:
+  threshold: 25     # min agents (of 31) that must agree to take a trade
+
+# ---- Execution ---------------------------------------------------------------
+broker: "auto"   # auto | sim | alpaca
+                 #   auto  -> alpaca if API keys are set, else sim
+                 #   sim   -> local simulated broker (no account needed)
+                 #   alpaca-> Alpaca PAPER account (safe, fake money)
+
+# ---- Reproducibility ---------------------------------------------------------
+seed: 42

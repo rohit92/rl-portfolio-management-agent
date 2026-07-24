@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Dashboard — Trading Agent</title>
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<meta name="theme-color" content="#0d1117">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950;
+    --red:#f85149; --amber:#d29922; --chip:#21262d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 80px}
+  .top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+  h1{font-size:22px;margin:0}
+  h1 .dot{color:var(--red)}
+  .topnav a{color:var(--muted);font-size:13px;margin-left:14px}
+  .topnav a:hover{color:var(--text)}
+  .clock{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 14px;font-size:12.5px;color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--line);
+    border-radius:20px;padding:4px 11px;font-weight:600;font-size:12px}
+  .pill .led{width:8px;height:8px;border-radius:50%}
+  .on{color:var(--green)} .on .led{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .off{color:var(--muted)} .off .led{background:var(--muted)}
+  .disclaimer{background:#211a0f;border:1px solid #5c4710;color:#e3b341;border-radius:8px;
+    padding:9px 13px;font-size:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .card h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 12px;
+    display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .card h2 .upd{font-weight:400;font-size:11px}
+  .grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .chip{background:var(--chip);border:1px solid var(--line);color:var(--muted);padding:5px 12px;
+    border-radius:20px;font-size:12.5px;cursor:pointer;user-select:none}
+  .chip:hover{color:var(--text);border-color:var(--accent)}
+  .chip.active{background:var(--panel2);color:var(--text);border-color:var(--accent)}
+  input[type=text]{background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:9px 12px;border-radius:8px;font-size:14px;outline:none;width:200px}
+  input:focus{border-color:var(--accent)}
+  button{background:var(--accent);color:#06101f;border:0;padding:9px 15px;border-radius:8px;
+    font-weight:600;cursor:pointer;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+  tbody tr{cursor:pointer} tbody tr:hover td{background:var(--panel2)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--muted)}
+  .scroll{max-height:360px;overflow:auto}
+  .loading{color:var(--muted);padding:24px;text-align:center;font-size:13px}
+  /* consensus card */
+  .verdict{border-radius:10px;padding:14px 16px;text-align:center;margin-bottom:12px;border:1px solid var(--line)}
+  .verdict .big{font-size:30px;font-weight:800;letter-spacing:1px}
+  .verdict .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .v-buy{background:#0f2417;border-color:#1c5631}.v-buy .big{color:var(--green)}
+  .v-sell{background:#241012;border-color:#5c2226}.v-sell .big{color:var(--red)}
+  .v-wait{background:#1c2230}.v-wait .big{color:var(--amber)}
+  .meter{display:flex;gap:8px;margin:10px 0}
+  .meter .m{flex:1;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .meter .m .k{font-size:10.5px;color:var(--muted);text-transform:uppercase}
+  .meter .m .val{font-size:20px;font-weight:800;margin-top:2px}
+  .fbar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}
+  .fbar .fn{width:78px;color:var(--muted)}
+  .fbar .ftrack{flex:1;height:9px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;position:relative}
+  .fbar .ffill{position:absolute;top:0;bottom:0;border-radius:5px}
+  .fbar .fmid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line)}
+  .fbar .fv{width:30px;text-align:right}
+  .slider{display:flex;align-items:center;gap:10px;margin:8px 0 4px;font-size:12.5px;color:var(--muted)}
+  .slider input{flex:1}
+  .patt{font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}
+  .patt .ic{display:inline-block;width:16px}
+  .b-bull{color:var(--green)} .b-bear{color:var(--red)} .b-neu{color:var(--muted)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  .b-live{background:#0f2417;color:var(--green);border:1px solid #1c5631}
+  .b-model{background:#3a1d10;color:#f0883e;border:1px solid #6b3414}
+  .ocmeta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:12px;color:var(--muted)}
+  .ocmeta b{color:var(--text)}
+  .atmrow td{background:#182030;font-weight:700}
+  .strike{text-align:center!important;font-weight:700;background:var(--panel2)}
+  .cehdr{color:var(--green)} .pehdr{color:var(--red)}
+  /* market pulse strip */
+  .pulse{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+  .pcard{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;cursor:pointer}
+  .pcard:hover{border-color:var(--accent)}
+  .pcard .pn{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px}
+  .pcard .pn .sd{width:7px;height:7px;border-radius:50%}
+  .pcard .pp{font-size:15px;font-weight:700;margin-top:3px}
+  .pcard .pc{font-size:12px}
+  /* live signal cards */
+  .sigwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .sig{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .sig.long{border-left:3px solid var(--green)} .sig.short{border-left:3px solid var(--red)}
+  .sig .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .sig .snm{font-size:15px;font-weight:700}
+  .sig .conv{font-size:11px;color:var(--muted)}
+  .sig .lvls{font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:6px 0}
+  .sig .lvls b{color:var(--text);display:block}
+  .sig .acts{display:flex;gap:6px;margin-top:8px}
+  .sig .acts button{padding:6px 10px;font-size:12px;flex:1}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+  .t-buy{background:#0f2417;color:var(--green)} .t-sell{background:#241012;color:var(--red)}
+  /* journal */
+  .qadd{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
+  .qadd input{width:96px;padding:7px 9px;font-size:13px}
+  .qadd input.wsym{width:140px}
+  .qadd select{padding:7px 8px}
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+  .st{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .st .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .st .v{font-size:19px;font-weight:800;margin-top:2px}
+  .mini{padding:5px 9px!important;font-size:12px!important}
+  .ghost{background:var(--chip)!important;color:var(--text)!important;border:1px solid var(--line)!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1><span class="dot">●</span> Live Dashboard</h1>
+    <div class="topnav">
+      <a href="/">Simple</a><a href="/pro">Pro dashboard</a>
+      <a href="#" onclick="refreshAll();return false">↻ Refresh</a>
+    </div>
+  </div>
+  <div class="clock" id="clock"></div>
+
+  <div class="disclaimer">⚠ Research &amp; education — <b>not investment advice</b>. Live data is real
+    (Binance / Deribit / NSE). A consensus of 35–40 of 45 agents cuts false starts but does <b>not</b>
+    guarantee profit — signals did not beat buy-and-hold in backtests. Paper-trade first. Options chains
+    show positioning (OI / PCR / max-pain), not the future.</div>
+
+  <!-- MARKET PULSE -->
+  <div class="card">
+    <h2>🌐 Market pulse <span class="upd mut" id="pulse-upd"></span></h2>
+    <div class="pulse" id="pulse"><div class="loading">Loading markets…</div></div>
+  </div>
+
+  <!-- LIVE SIGNALS -->
+  <div class="card">
+    <h2>🔥 Live signals — strongest consensus now <span class="upd mut" id="sig-upd"></span></h2>
+    <div id="sig-body"><div class="loading">Scanning open markets…</div></div>
+  </div>
+
+  <!-- LIVE FUTURES FEED -->
+  <div class="card">
+    <h2>₿ Live crypto futures feed <span class="upd mut" id="ff-upd"></span></h2>
+    <div class="chips" id="ff-sort">
+      <span class="chip active" data-sort="volume">Most active</span>
+      <span class="chip" data-sort="gainers">Top gainers</span>
+      <span class="chip" data-sort="losers">Top losers</span>
+      <span class="chip" data-sort="funding">Funding extremes</span>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Symbol</th><th>Mark</th><th>24h %</th><th>Funding</th>
+        <th>Next fund</th><th>Open int.</th><th>OI notional</th><th>Max lev</th></tr></thead>
+      <tbody id="ff-body"><tr><td colspan="8" class="loading">Loading live feed…</td></tr></tbody>
+    </table></div>
+    <div class="mut" style="font-size:11px;margin-top:8px">Funding = cost of holding a perp (crowding), not a
+      signal. Click a row to load its chart. Max leverage is reference — it is the #1 cause of blow-ups.</div>
+  </div>
+
+  <div class="grid2">
+    <!-- CANDLESTICK CHART -->
+    <div class="card">
+      <h2>📊 <span id="ch-title">Candlestick chart</span> <span class="upd mut" id="ch-upd"></span></h2>
+      <div class="chips">
+        <input id="ch-sym" type="text" value="BTCUSDT" placeholder="Symbol (BTCUSDT, ^NSEI, RELIANCE.NS)">
+        <button onclick="loadChart()">Load</button>
+      </div>
+      <div class="chips" id="ch-int">
+        <span class="chip" data-int="5m">5m</span>
+        <span class="chip active" data-int="15m">15m</span>
+        <span class="chip" data-int="1h">1h</span>
+        <span class="chip" data-int="4h">4h</span>
+        <span class="chip" data-int="1d">1d</span>
+      </div>
+      <div id="ch-svg"><div class="loading">Loading chart…</div></div>
+      <div id="ch-patt" style="margin-top:6px"></div>
+    </div>
+
+    <!-- CONSENSUS SIGNAL -->
+    <div class="card">
+      <h2>🧭 Consensus signal <span class="upd mut" id="cs-upd"></span></h2>
+      <div class="slider">
+        <span>Min agents agreeing:</span>
+        <input id="cs-min" type="range" min="30" max="45" value="38"
+          oninput="document.getElementById('cs-minv').textContent=this.value" onchange="loadChart()">
+        <b id="cs-minv" style="color:var(--text)">38</b>/45
+      </div>
+      <div id="cs-body"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- OPTIONS CHAIN -->
+  <div class="card">
+    <h2>⛓ Options chain <span class="upd mut" id="oc-upd"></span></h2>
+    <div class="chips" id="oc-mkt">
+      <span class="chip active" data-oc="NIFTY">NIFTY</span>
+      <span class="chip" data-oc="BANKNIFTY">BANKNIFTY</span>
+      <span class="chip" data-oc="FINNIFTY">FINNIFTY</span>
+      <span class="chip" data-oc="SENSEX">SENSEX (BSE)</span>
+      <span class="chip" data-oc="BTC">BTC</span>
+      <span class="chip" data-oc="ETH">ETH</span>
+    </div>
+    <div id="oc-meta" class="ocmeta"></div>
+    <div class="scroll"><table id="oc-table">
+      <thead><tr>
+        <th class="cehdr">CE OI</th><th class="cehdr">CE IV</th><th class="cehdr">CE LTP</th>
+        <th class="strike">Strike</th>
+        <th class="pehdr">PE LTP</th><th class="pehdr">PE IV</th><th class="pehdr">PE OI</th>
+      </tr></thead>
+      <tbody id="oc-body"><tr><td colspan="7" class="loading">Loading chain…</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- TRADE JOURNAL -->
+  <div class="card">
+    <h2>📓 Trade journal — your real forward scoreboard <span class="upd mut" id="jr-upd"></span></h2>
+    <div class="qadd">
+      <input id="j-sym" type="text" class="wsym" placeholder="Symbol">
+      <select id="j-side"><option>BUY</option><option>SELL</option></select>
+      <input id="j-entry" type="text" placeholder="Entry">
+      <input id="j-target" type="text" placeholder="Target">
+      <input id="j-stop" type="text" placeholder="Stop">
+      <button onclick="logManual()">+ Log trade</button>
+      <button class="ghost" onclick="fillFromChart()">↤ From chart</button>
+    </div>
+    <div class="statgrid" id="jr-stats"></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Trade</th><th>Side</th><th>Entry</th><th>Target</th><th>Stop</th>
+        <th>Now / Exit</th><th>P&amp;L %</th><th>R</th><th></th></tr></thead>
+      <tbody id="jr-body"><tr><td colspan="9" class="loading">No trades yet — log a signal to start your record.</td></tr></tbody>
+    </table></div>
+    <div class="mut" style="font-size:11px;margin-top:8px">This is the honest scoreboard: it can't be curve-fit.
+      Expectancy &amp; profit factor — not win rate — decide whether the consensus actually helps <b>you</b>.
+      Backtested hit-rates here run ~48–55% (coin-flip); prove your edge forward.</div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let ffSort="volume", chInt="15m", ocMkt="NIFTY";
+let curSig={sym:'BTCUSDT', side:'WAIT', last:null};
+
+function fmt(n){ if(n==null||isNaN(n)) return '–'; const a=Math.abs(n);
+  if(a>=1000) return n.toLocaleString(undefined,{maximumFractionDigits:2});
+  if(a>=1) return n.toFixed(2); if(a>=0.01) return n.toFixed(4); return n.toPrecision(4); }
+function bn(n){ if(n==null||isNaN(n)) return '–'; const a=Math.abs(n);
+  if(a>=1e9) return (n/1e9).toFixed(2)+'B'; if(a>=1e6) return (n/1e6).toFixed(2)+'M';
+  if(a>=1e3) return (n/1e3).toFixed(1)+'K'; return (+n).toFixed(0); }
+function sgn(n,suf=''){ if(n==null||isNaN(n)) return '<span class="mut">–</span>';
+  const c=n>0?'pos':n<0?'neg':'mut'; return `<span class="${c}">${n>0?'+':''}${fmt(n)}${suf}</span>`; }
+
+/* ---------------- market clock (IST) ---------------- */
+function clock(){
+  const now=new Date();
+  const ist=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',weekday:'short'}).formatToParts(now);
+  const wd=ist.find(p=>p.type==='weekday').value; const hh=+ist.find(p=>p.type==='hour').value; const mm=+ist.find(p=>p.type==='minute').value;
+  const mins=hh*60+mm; const isWk=!['Sat','Sun'].includes(wd);
+  const nseOpen = isWk && mins>=555 && mins<=930;   // 09:15–15:30
+  const istStr=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(now);
+  $('#clock').innerHTML =
+    `<span class="pill ${nseOpen?'on':'off'}"><span class="led"></span>NSE / BSE ${nseOpen?'OPEN':'CLOSED'}</span>`+
+    `<span class="pill on"><span class="led"></span>Crypto 24/7</span>`+
+    `<span>${wd} ${istStr} IST</span>`;
+}
+setInterval(clock,1000); clock();
+
+/* ---------------- live futures feed ---------------- */
+async function loadFeed(){
+  try{
+    const r=await fetch(`/api/futures_feed?limit=20&sort=${ffSort}`); const d=await r.json();
+    if(d.error){ $('#ff-body').innerHTML=`<tr><td colspan="8" class="loading">${d.error}</td></tr>`; return; }
+    $('#ff-upd').textContent='updated '+d.updated;
+    $('#ff-body').innerHTML = d.rows.map(r=>{
+      const fund = r.funding, fc = fund>0?'pos':fund<0?'neg':'mut';
+      const nf = r.next_funding? tleft(r.next_funding):'–';
+      return `<tr onclick="setSym('${r.symbol}')">
+        <td><b>${r.base}</b><span class="mut">USDT</span></td>
+        <td>${fmt(r.mark)}</td><td>${sgn(r.chg24h,'%')}</td>
+        <td><span class="${fc}">${fund>0?'+':''}${fund.toFixed(4)}%</span></td>
+        <td class="mut">${nf}</td>
+        <td>${bn(r.open_interest)}</td><td class="mut">$${bn(r.oi_notional)}</td>
+        <td class="mut">${r.max_lev}x</td></tr>`;
+    }).join('');
+  }catch(e){ $('#ff-body').innerHTML=`<tr><td colspan="8" class="loading">Feed error: ${e}</td></tr>`; }
+}
+function tleft(ms){ let s=Math.max(0,Math.floor((ms-Date.now())/1000));
+  const h=Math.floor(s/3600); s%=3600; const m=Math.floor(s/60); return `${h}h ${m}m`; }
+$('#ff-sort').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c)return;
+  document.querySelectorAll('#ff-sort .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); ffSort=c.dataset.sort; loadFeed(); });
+function setSym(s){ $('#ch-sym').value=s; loadChart(); }
+
+/* ---------------- candlestick chart ---------------- */
+function candleSVG(bars, markers, patterns){
+  const W=920,H=340, padL=8,padR=58,padT=10,padB=6, volH=50, chartH=H-volH-padT-padB;
+  if(!bars || !bars.length) return '<div class="loading">No data</div>';
+  let lo=Math.min(...bars.map(b=>b.l)), hi=Math.max(...bars.map(b=>b.h));
+  const rp=(hi-lo)*0.05||1; lo-=rp; hi+=rp;
+  const maxV=Math.max(...bars.map(b=>b.v))||1, n=bars.length;
+  const cw=(W-padL-padR)/n, bw=Math.max(1,cw*0.62);
+  const x=i=> padL + i*cw + cw/2;
+  const y=p=> padT + (hi-p)/(hi-lo)*chartH;
+  const vy=v=> H-padB - (v/maxV)*volH;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
+  for(let g=0;g<=4;g++){ const p=lo+(hi-lo)*g/4, yy=y(p);
+    s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#30363d" stroke-width="0.5"/>`;
+    s+=`<text x="${W-padR+3}" y="${yy+3}" fill="#8b949e" font-size="10">${fmt(p)}</text>`; }
+  bars.forEach((b,i)=>{ const up=b.c>=b.o;
+    s+=`<rect x="${x(i)-bw/2}" y="${vy(b.v)}" width="${bw}" height="${H-padB-vy(b.v)}" fill="${up?'#1c5631':'#5c2226'}" opacity="0.6"/>`; });
+  bars.forEach((b,i)=>{ const up=b.c>=b.o, col=up?'#3fb950':'#f85149';
+    s+=`<line x1="${x(i)}" y1="${y(b.h)}" x2="${x(i)}" y2="${y(b.l)}" stroke="${col}" stroke-width="1"/>`;
+    const yo=y(b.o),yc=y(b.c), top=Math.min(yo,yc), hgt=Math.max(1,Math.abs(yc-yo));
+    s+=`<rect x="${x(i)-bw/2}" y="${top}" width="${bw}" height="${hgt}" fill="${col}"/>`; });
+  (patterns||[]).forEach(pt=>{ if(pt.i<0||pt.i>=n) return; const b=bars[pt.i];
+    const col=pt.dir==='bull'?'#3fb950':pt.dir==='bear'?'#f85149':'#8b949e';
+    const yy=pt.dir==='bear'? y(b.h)-5 : y(b.l)+11;
+    s+=`<text x="${x(pt.i)}" y="${yy}" fill="${col}" font-size="9" text-anchor="middle"><title>${pt.name}: ${pt.desc}</title>${pt.icon}</text>`; });
+  (markers||[]).forEach(m=>{ if(m.i<0||m.i>=n) return; const b=bars[m.i];
+    const buy=m.side==='BUY', col=buy?'#3fb950':'#f85149', yy=buy? y(b.l)+18 : y(b.h)-16;
+    s+=`<g><title>${m.side} — ${m.n}/45 agents agree</title>`+
+       `<circle cx="${x(m.i)}" cy="${yy}" r="6" fill="${col}" stroke="#0d1117" stroke-width="1"/>`+
+       `<text x="${x(m.i)}" y="${yy+3}" fill="#0d1117" font-size="8" text-anchor="middle" font-weight="700">${buy?'B':'S'}</text></g>`; });
+  s+=`</svg>`; return s;
+}
+
+const FAMS=['Trend','Momentum','MeanRev','Breakout','Volume','Statistical'];
+function famBars(fam){ const mx=8;
+  return FAMS.map(k=>{ const v=fam[k]||0, pct=Math.min(100,Math.abs(v)/mx*100)/2;
+    const col=v>=0?'#3fb950':'#f85149', side=v>=0?`left:50%;width:${pct}%`:`right:50%;width:${pct}%`;
+    return `<div class="fbar"><span class="fn">${k}</span>
+      <div class="ftrack"><div class="fmid"></div><div class="ffill" style="${side};background:${col}"></div></div>
+      <span class="fv">${v>0?'+':''}${v}</span></div>`; }).join('');
+}
+
+async function loadChart(){
+  const sym=$('#ch-sym').value.trim().toUpperCase()||'BTCUSDT';
+  const minA=$('#cs-min').value;
+  $('#ch-title').textContent=sym+' · '+chInt;
+  try{
+    const r=await fetch(`/api/candles?symbol=${encodeURIComponent(sym)}&interval=${chInt}&min_agree=${minA}`);
+    const d=await r.json();
+    if(d.error){ $('#ch-svg').innerHTML=`<div class="loading">${d.error}</div>`;
+      $('#cs-body').innerHTML=`<div class="loading">${d.error}</div>`; return; }
+    $('#ch-svg').innerHTML=candleSVG(d.bars,d.markers,d.patterns);
+    $('#ch-upd').textContent='· last '+fmt(d.last)+' @ '+d.updated;
+    // candle patterns readout
+    const cs=d.candle_summary;
+    const bcls=cs.bias==='bullish'?'b-bull':cs.bias==='bearish'?'b-bear':'b-neu';
+    let ph=`<div class="patt" style="border:0"><b class="${bcls}">Candles: ${cs.bias}</b> <span class="mut">— ${cs.note}</span></div>`;
+    (cs.latest||[]).forEach(p=>{ const pc=p.dir==='bull'?'b-bull':p.dir==='bear'?'b-bear':'b-neu';
+      ph+=`<div class="patt"><span class="ic ${pc}">${p.icon}</span><b>${p.name}</b> <span class="mut">${p.desc}</span></div>`; });
+    if(!(cs.latest||[]).length) ph+=`<div class="patt mut">No pattern on the latest candle.</div>`;
+    $('#ch-patt').innerHTML=ph;
+    renderConsensus(d.consensus, sym, d.last, cs);
+  }catch(e){ $('#ch-svg').innerHTML=`<div class="loading">Chart error: ${e}</div>`; }
+}
+function renderConsensus(c, sym, last, cs){
+  curSig={sym:sym, side:c.side, last:last};
+  const cls=c.side==='BUY'?'v-buy':c.side==='SELL'?'v-sell':'v-wait';
+  const agree=Math.max(c.long,c.short);
+  const confirm = (c.side==='BUY'&&cs.bias==='bullish')||(c.side==='SELL'&&cs.bias==='bearish');
+  const confTxt = c.side==='WAIT' ? '' :
+    (confirm ? `<span class="pos">✓ candlesticks confirm</span>`
+             : (cs.bias==='neutral'?`<span class="mut">candlesticks neutral</span>`
+                                    :`<span class="neg">✗ candlesticks diverge</span>`));
+  $('#cs-body').innerHTML=`
+    <div class="verdict ${cls}"><div class="big">${c.side}</div>
+      <div class="sub">${sym} · ${fmt(last)} · ${c.verdict} ${confTxt}</div></div>
+    <div class="meter">
+      <div class="m"><div class="k">Buy votes</div><div class="val pos">${c.long}</div></div>
+      <div class="m"><div class="k">Sell votes</div><div class="val neg">${c.short}</div></div>
+      <div class="m"><div class="k">Need</div><div class="val">${c.min_agree}<span class="mut" style="font-size:12px">/45</span></div></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:2px 0 8px">Family net direction (each: −8 sell … +8 buy)</div>
+    ${famBars(c.families)}
+    <div class="mut" style="font-size:11px;margin-top:10px">Fires only when ≥ ${c.min_agree} of 45 independent
+      setups agree — a high bar by design (rarely). Consensus curbs whipsaw; it is not a profit switch.</div>`;
+}
+$('#ch-int').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c)return;
+  document.querySelectorAll('#ch-int .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); chInt=c.dataset.int; loadChart(); });
+
+/* ---------------- options chain ---------------- */
+async function loadChain(){
+  try{
+    const r=await fetch(`/api/option_chain?symbol=${ocMkt}`); const d=await r.json();
+    if(d.error){ $('#oc-body').innerHTML=`<tr><td colspan="7" class="loading">${d.error}</td></tr>`;
+      $('#oc-meta').innerHTML=''; return; }
+    $('#oc-upd').textContent='updated '+new Date().toLocaleTimeString();
+    const src=d.source==='live'?'<span class="badge b-live">LIVE</span>':'<span class="badge b-model">MODELED</span>';
+    $('#oc-meta').innerHTML=`${src} <span><b>${d.symbol}</b> ${d.market}</span>
+      <span>Spot <b>${fmt(d.underlying)}</b></span><span>Expiry <b>${d.expiry||'–'}</b></span>
+      <span>ATM <b>${fmt(d.atm)}</b></span><span>PCR <b>${d.pcr??'–'}</b></span>
+      <span>Max-pain <b>${fmt(d.max_pain)}</b></span><span>${d.bias||''}</span>
+      <span class="mut" style="flex-basis:100%;font-size:11px">${d.note||''}</span>`;
+    const atm=d.atm;
+    $('#oc-body').innerHTML=(d.rows||[]).map(row=>{
+      const ce=row.ce||{}, pe=row.pe||{}, isAtm=row.strike===atm;
+      return `<tr class="${isAtm?'atmrow':''}">
+        <td>${bn(ce.oi)}</td><td class="mut">${ce.iv!=null?(+ce.iv).toFixed(1):'–'}</td><td>${fmt(ce.ltp)}</td>
+        <td class="strike">${fmt(row.strike)}</td>
+        <td>${fmt(pe.ltp)}</td><td class="mut">${pe.iv!=null?(+pe.iv).toFixed(1):'–'}</td><td>${bn(pe.oi)}</td></tr>`;
+    }).join('') || `<tr><td colspan="7" class="loading">No strikes.</td></tr>`;
+  }catch(e){ $('#oc-body').innerHTML=`<tr><td colspan="7" class="loading">Chain error: ${e}</td></tr>`; }
+}
+$('#oc-mkt').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c)return;
+  document.querySelectorAll('#oc-mkt .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); ocMkt=c.dataset.oc; loadChain(); });
+
+/* ---------------- market pulse ---------------- */
+const SHORT={'^NSEI':'NIFTY','^BSESN':'SENSEX','^NSEBANK':'BANKNIFTY','^GSPC':'S&P 500',
+  '^NDX':'NASDAQ','BTCUSDT':'BTC','ETHUSDT':'ETH','SOLUSDT':'SOL'};
+async function loadPulse(){
+  try{
+    const r=await fetch('/api/overview'); const d=await r.json();
+    $('#pulse-upd').textContent='updated '+new Date().toLocaleTimeString();
+    $('#pulse').innerHTML=(d.rows||[]).map(r=>{
+      const chg=r.chg==null?null:r.chg*100, comp=r.composite||0;
+      const dot=comp>0.15?'var(--green)':comp<-0.15?'var(--red)':'var(--muted)';
+      return `<div class="pcard" onclick="setSym('${r.symbol}')">
+        <div class="pn"><span class="sd" style="background:${dot}"></span>${SHORT[r.symbol]||r.symbol}</div>
+        <div class="pp">${fmt(r.last)}</div><div class="pc">${sgn(chg,'%')}</div></div>`;
+    }).join('') || '<div class="loading">No data.</div>';
+  }catch(e){ $('#pulse').innerHTML=`<div class="loading">Pulse error: ${e}</div>`; }
+}
+
+/* ---------------- live signals ---------------- */
+async function loadSignals(){
+  try{
+    const r=await fetch('/api/live_signals'); const d=await r.json();
+    $('#sig-upd').textContent=(d.status?`${d.status.nse_open?'NSE open':'NSE closed'} · `:'')+'updated '+(d.updated||'');
+    const rows=[...(d.strong_long||[]), ...(d.strong_short||[])];
+    const pool = rows.length ? rows : (d.all||[]).slice(0,6);
+    if(!pool.length){ $('#sig-body').innerHTML='<div class="loading">No strong consensus signals right now — that’s normal (the 35–40 bar is high). Charts &amp; journal stay live.</div>'; return; }
+    $('#sig-body').innerHTML='<div class="sigwrap">'+pool.map(s=>{
+      const buy=s.side==='BUY', cls=buy?'long':'short', tag=buy?'t-buy':'t-sell';
+      const j=JSON.stringify({symbol:s.symbol,side:s.side,entry:s.entry,target:s.target,stop:s.stop,conviction:s.conviction,source:'live_signal'}).replace(/"/g,'&quot;');
+      return `<div class="sig ${cls}">
+        <div class="sh"><span class="snm">${s.symbol}</span><span class="tag ${tag}">${s.side} ${s.conviction??''}</span></div>
+        <div class="conv">${s.committee||''}${rows.length?' · STRONG':''}</div>
+        <div class="lvls"><span>Entry<b>${fmt(s.entry)}</b></span><span>Target<b>${fmt(s.target)}</b></span><span>Stop<b>${fmt(s.stop)}</b></span></div>
+        <div class="acts"><button class="ghost mini" onclick="setSym('${s.symbol}')">Chart</button>
+          <button class="mini" onclick='logSig(${j})'>+ Journal</button></div></div>`;
+    }).join('')+'</div>';
+  }catch(e){ $('#sig-body').innerHTML=`<div class="loading">Signals error: ${e}</div>`; }
+}
+
+/* ---------------- trade journal ---------------- */
+function fillFromChart(){
+  $('#j-sym').value=curSig.sym;
+  $('#j-side').value=curSig.side==='SELL'?'SELL':'BUY';
+  if(curSig.last!=null) $('#j-entry').value=curSig.last;
+  $('#j-target').value=''; $('#j-stop').value='';
+}
+async function logManual(){
+  const p=new URLSearchParams({symbol:$('#j-sym').value,side:$('#j-side').value,
+    entry:$('#j-entry').value,target:$('#j-target').value,stop:$('#j-stop').value,source:'manual'});
+  if(!$('#j-sym').value||!$('#j-entry').value){ alert('Symbol and entry are required.'); return; }
+  await fetch('/api/journal/log?'+p.toString()); ['j-sym','j-entry','j-target','j-stop'].forEach(id=>$('#'+id).value='');
+  loadJournal();
+}
+async function logSig(s){
+  const p=new URLSearchParams(); Object.entries(s).forEach(([k,v])=>{ if(v!=null) p.set(k,v); });
+  await fetch('/api/journal/log?'+p.toString()); loadJournal();
+}
+async function closeTrade(id){
+  const px=prompt('Exit price? (leave blank to use current market price)');
+  const q=px?`&exit=${px}`:''; await fetch(`/api/journal/close?id=${id}${q}`); loadJournal();
+}
+async function delTrade(id){ if(confirm('Delete this trade?')){ await fetch(`/api/journal/delete?id=${id}`); loadJournal(); } }
+async function loadJournal(){
+  try{
+    const r=await fetch('/api/journal'); const d=await r.json(); const st=d.stats||{};
+    $('#jr-upd').textContent='updated '+new Date().toLocaleTimeString();
+    const pf=st.profit_factor, exp=st.expectancy_pct;
+    $('#jr-stats').innerHTML=`
+      <div class="st"><div class="k">Closed</div><div class="v">${st.closed||0}</div></div>
+      <div class="st"><div class="k">Win rate</div><div class="v">${st.win_rate!=null?st.win_rate+'%':'–'}</div></div>
+      <div class="st"><div class="k">Expectancy</div><div class="v ${exp>0?'pos':exp<0?'neg':''}">${exp!=null?(exp>0?'+':'')+exp+'%':'–'}</div></div>
+      <div class="st"><div class="k">Profit factor</div><div class="v ${pf>1?'pos':pf!=null?'neg':''}">${pf!=null?pf:'–'}</div></div>
+      <div class="st"><div class="k">Avg R</div><div class="v">${st.avg_r!=null?st.avg_r:'–'}</div></div>
+      <div class="st"><div class="k">Open</div><div class="v">${st.open||0}</div></div>`;
+    const ts=d.trades||[];
+    if(!ts.length){ $('#jr-body').innerHTML='<tr><td colspan="9" class="loading">No trades yet — log a signal to start your record.</td></tr>'; return; }
+    $('#jr-body').innerHTML=ts.map(t=>{
+      const open=t.status==='open';
+      const nowExit = open ? (t.live_price!=null?fmt(t.live_price):'<span class="mut">–</span>') : fmt(t.exit);
+      let pnl = open ? t.live_pnl_pct : t.pnl_pct;
+      const pcls = pnl>0?'pos':pnl<0?'neg':'mut';
+      const hit = open && t.target_hit ? ' <span class="pos">🎯</span>' : (open && t.stop_hit ? ' <span class="neg">🛑</span>':'');
+      const tag = t.side==='BUY'?'t-buy':'t-sell';
+      const act = open ? `<button class="mini" onclick="closeTrade('${t.id}')">Close</button>`
+                       : `<button class="ghost mini" onclick="delTrade('${t.id}')">✕</button>`;
+      return `<tr><td><b>${t.symbol}</b> <span class="mut" style="font-size:10px">${t.market||''} · ${t.source||''}</span></td>
+        <td><span class="tag ${tag}">${t.side}</span></td>
+        <td>${fmt(t.entry)}</td><td>${fmt(t.target)}</td><td>${fmt(t.stop)}</td>
+        <td>${nowExit}${hit}</td>
+        <td class="${pcls}">${pnl!=null?(pnl>0?'+':'')+pnl+'%':'–'}</td>
+        <td>${t.r_multiple!=null?t.r_multiple:(open?'<span class="mut">live</span>':'–')}</td>
+        <td>${act}</td></tr>`;
+    }).join('');
+  }catch(e){ $('#jr-body').innerHTML=`<tr><td colspan="9" class="loading">Journal error: ${e}</td></tr>`; }
+}
+
+/* ---------------- orchestration ---------------- */
+function refreshAll(){ loadPulse(); loadSignals(); loadFeed(); loadChart(); loadChain(); loadJournal(); }
+refreshAll();
+setInterval(loadPulse, 20000);
+setInterval(loadFeed, 10000);
+setInterval(loadChart, 15000);
+setInterval(loadChain, 60000);
+setInterval(loadJournal, 20000);
+setInterval(loadSignals, 120000);
+</script>
+</body>
+</html>

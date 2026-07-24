@@ -1,0 +1,8 @@
+# Secrets — never commit real keys
+.env
+
+# Runtime state, logs, simulated portfolio
+state/
+
+# Backtest output
+backtest_results/

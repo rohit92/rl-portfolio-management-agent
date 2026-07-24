@@ -1,0 +1,12 @@
+# Live agent dependencies (in addition to the parent project's requirements).
+# Install into the same venv:  pip install -r live_agent/requirements.txt
+alpaca-py>=0.20
+python-dotenv>=1.0
+yfinance>=0.2.38
+pandas>=2.2
+numpy>=1.26
+pyyaml>=6.0
+matplotlib>=3.8
+flask>=3.0
+requests>=2.31
+kiteconnect

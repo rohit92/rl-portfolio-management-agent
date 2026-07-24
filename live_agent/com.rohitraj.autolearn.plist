@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent: weekly self-learning pass (walk-forward re-fit + promotion).
+  Runs Sundays at 18:00 local, so fresh weights are ready before Monday's open.
+
+  Install:
+    cp com.rohitraj.autolearn.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.rohitraj.autolearn.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.rohitraj.autolearn.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.rohitraj.autolearn</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/rohitraj/rl-trading-agent/live_agent/run_learn.sh</string>
+  </array>
+
+  <!-- Sunday (Weekday 0) at 18:00 local time. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>18</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/learn.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/rohitraj/rl-trading-agent/live_agent/state/learn.err</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

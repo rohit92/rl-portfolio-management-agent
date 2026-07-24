@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading Agent</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<meta name="theme-color" content="#0d1117">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--line:#30363d;--text:#e6edf3;
+        --muted:#8b949e;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:640px;margin:0 auto;padding:34px 18px 80px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
+  .logo{display:flex;gap:10px;align-items:center;font-weight:800;font-size:20px}
+  .logo img{width:34px;height:34px;border-radius:9px}
+  .logo span{color:var(--accent)}
+  a.pro{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);
+        padding:7px 12px;border-radius:8px}
+  a.pro:hover{color:var(--text);border-color:var(--accent)}
+  h1{font-size:26px;margin:0 0 6px;text-align:center}
+  .sub{color:var(--muted);text-align:center;font-size:14px;margin-bottom:22px}
+  .search{display:flex;gap:8px}
+  input{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);
+        padding:15px 16px;border-radius:12px;font-size:17px;outline:none}
+  input:focus{border-color:var(--accent)}
+  button{background:var(--accent);color:#06101f;border:0;padding:0 22px;border-radius:12px;
+         font-weight:700;font-size:15px;cursor:pointer}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 8px}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:7px 13px;
+        border-radius:20px;font-size:13.5px;cursor:pointer}
+  .chip:hover{color:var(--text);border-color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+        padding:22px;margin-top:18px}
+  .verdict{font-size:26px;font-weight:800;text-align:center;line-height:1.35}
+  .v-buy{color:var(--green)} .v-sell{color:var(--red)} .v-wait{color:var(--amber)}
+  .explain{color:var(--muted);text-align:center;margin-top:8px;font-size:14.5px}
+  .price{font-size:34px;font-weight:800;text-align:center;margin:4px 0 0}
+  .sym{color:var(--muted);text-align:center;font-size:14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .stat .k{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  .stat .v{font-size:19px;font-weight:700;margin-top:2px}
+  .plan{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  .muted{color:var(--muted);font-size:12.5px}
+  .warn{background:#211a0f;border:1px solid #5c4710;color:#e3b341;border-radius:10px;
+        padding:10px 13px;font-size:12.5px;margin-top:16px;text-align:center}
+  .loading{color:var(--muted);text-align:center;padding:36px 0}
+  .err{color:var(--red);text-align:center;padding:20px 0}
+  .fullbtn{display:block;text-align:center;margin-top:14px;color:var(--accent);
+           text-decoration:none;font-size:14px}
+  .spin{display:inline-block;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo"><img src="/static/icon-192.png" alt=""> Trading <span>Agent</span></div>
+    <a class="pro" href="/live" style="margin-right:10px">🔴 Live</a>
+    <a class="pro" href="/pro">Pro mode →</a>
+  </div>
+
+  <h1>Should I buy, sell, or wait?</h1>
+  <div class="sub">Type any stock or coin. One clear answer, in plain language.</div>
+
+  <div class="search">
+    <input id="q" placeholder="RELIANCE, BTC, NIFTY, AAPL…" autocomplete="off">
+    <button onclick="go()">Check</button>
+  </div>
+  <div class="chips">
+    <span class="chip" onclick="pick('BTCUSDT')">Bitcoin</span>
+    <span class="chip" onclick="pick('^NSEI')">Nifty 50</span>
+    <span class="chip" onclick="pick('RELIANCE.NS')">Reliance</span>
+    <span class="chip" onclick="pick('TCS.NS')">TCS</span>
+    <span class="chip" onclick="pick('AAPL')">Apple</span>
+    <span class="chip" onclick="pick('ETHUSDT')">Ethereum</span>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="warn">Research tool, not investment advice. Our measured accuracy is ~50–55%,
+    like every honest system — the value is risk control, not sure-shot tips. Paper-trade first.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const num=x=>x==null||isNaN(x)?"—":Number(x).toLocaleString(undefined,{maximumFractionDigits:2});
+const pct=x=>x==null||isNaN(x)?"—":(x*100).toFixed(Math.abs(x)>=0.1?0:1)+"%";
+function pick(s){$("q").value=s;go();}
+$("q").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
+
+async function go(){
+  let q=$("q").value.trim(); if(!q)return;
+  $("out").innerHTML='<div class="card"><div class="loading"><span class="spin">◐</span> Reading the market for '+q+'…</div></div>';
+  try{
+    // resolve friendly names → symbols
+    if(!/^[\^A-Z0-9.\-]+$/.test(q) || (!q.includes(".") && !q.startsWith("^") && !q.toUpperCase().endsWith("USDT"))){
+      const r=await (await fetch("/api/resolve?q="+encodeURIComponent(q))).json();
+      if(r.symbol) q=r.symbol;
+    }
+    const [ins,mtf]=await Promise.all([
+      fetch("/api/insight?symbol="+encodeURIComponent(q)).then(r=>r.json()),
+      fetch("/api/mtf?symbol="+encodeURIComponent(q)).then(r=>r.json()).catch(()=>({}))
+    ]);
+    if(ins.error){ $("out").innerHTML='<div class="card"><div class="err">'+ins.error+'</div></div>'; return; }
+    render(q,ins,mtf);
+  }catch(e){
+    $("out").innerHTML='<div class="card"><div class="err">Could not reach the engine. Is the app running on your Mac?</div></div>';
+  }
+}
+
+function render(sym,d,m){
+  const side=(m&&m.side)||"WAIT";
+  const vc=side==="BUY"?"v-buy":side==="SELL"?"v-sell":"v-wait";
+  const emoji=side==="BUY"?"🟢":side==="SELL"?"🔴":"⏸";
+  const word=side==="BUY"?"Looks like a BUY setup":side==="SELL"?"Looks like a SELL / avoid setup":"WAIT — no clear edge right now";
+  const why=(m&&m.verdict)?m.verdict.replace(/^[🟢🔴⏸]+\s*/,""):"Timeframe analysis unavailable — showing single-frame read.";
+  const f=d.forecast||{}, L=d.levels||{}, S=d.sentiment||{};
+  const plan = side!=="WAIT" && L.breakout ? `
+    <div class="plan">
+      <div class="stat"><div class="k">${side==="BUY"?"Buy above":"Sell below"}</div>
+        <div class="v">${num(side==="BUY"?L.breakout.level:L.breakdown.level)}</div></div>
+      <div class="stat"><div class="k">Target</div>
+        <div class="v">${num(side==="BUY"?L.breakout.target:L.breakdown.target)}</div></div>
+      <div class="stat"><div class="k">Stop (most important)</div>
+        <div class="v">${num(side==="BUY"?L.breakdown.level:L.breakout.level)}</div></div>
+    </div>` : "";
+  $("out").innerHTML=`<div class="card">
+    <div class="sym">${d.symbol}</div>
+    <div class="price">${num(d.last)}</div>
+    <div class="verdict ${vc}" style="margin-top:10px">${emoji} ${word}</div>
+    <div class="explain">${why}</div>
+    ${plan}
+    <div class="grid">
+      <div class="stat"><div class="k">Chance it rises tomorrow</div><div class="v">${pct(f.p_up)}</div></div>
+      <div class="stat"><div class="k">Typical daily move</div><div class="v">±${pct(f.exp_move_pct)}</div></div>
+      <div class="stat"><div class="k">Tomorrow's likely range</div>
+        <div class="v" style="font-size:15px">${num(f.levels&&f.levels.p5)} – ${num(f.levels&&f.levels.p95)}</div></div>
+      <div class="stat"><div class="k">Market mood</div>
+        <div class="v" style="font-size:15px">${(S.label||"—")}${S.primary_value!=null?" ("+S.primary_value+")":""}</div></div>
+    </div>
+    <a class="fullbtn" href="/pro">See the full analysis in Pro mode →</a>
+  </div>`;
+}
+</script>
+</body>
+</html>
