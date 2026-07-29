@@ -8,9 +8,10 @@
 node_modules/
 **/node_modules/
 
-# launchd job definitions may embed local absolute paths
+# Runtime trading state (mutable; contains live account financials)
 live_agent/backtest_results/
 live_agent/state/
+live_agent/static/session_state.json
 
 # Data files (downloaded at runtime)
 data/raw/*.csv
