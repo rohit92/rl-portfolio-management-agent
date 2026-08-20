@@ -1,16 +1,16 @@
 """
-mcp_server.py — Talk to your trading platform through Claude (MCP server).
+mcp_server.py — Expose the trading platform through an MCP server.
 
-This exposes the whole agent as Model-Context-Protocol tools, so an MCP client
-(Claude Desktop, Claude Code) can ask things like "what's the signal for BTCUSDT",
-"scan crypto for top picks", "show my paper portfolio". It's the honest version of
-"connect Claude to your trading app": read-only insights + *paper* actions only —
+This exposes the whole agent as Model-Context-Protocol tools, so a compatible MCP
+client can ask things like "what's the signal for BTCUSDT", "scan crypto for top
+picks", or "show my paper portfolio". It provides read-only insights and *paper*
+actions only —
 **no real orders, no real money.**
 
 Run it standalone to sanity-check:
     python mcp_server.py            # starts a stdio MCP server (Ctrl-C to stop)
 
-Connect it to Claude Desktop — add to claude_desktop_config.json:
+Connect it to an MCP-compatible desktop client using a server definition like:
     {
       "mcpServers": {
         "trading-agent": {
@@ -19,7 +19,7 @@ Connect it to Claude Desktop — add to claude_desktop_config.json:
         }
       }
     }
-Then restart Claude Desktop and ask it about your markets.
+Restart the client and use its MCP tools to inspect your markets.
 """
 
 from __future__ import annotations
