@@ -62,7 +62,7 @@ Diversifying across **signals** (momentum, mean-reversion, trend) *and* **assets
 | `signal_perf.py` | Measures the real hit-rate / expectancy of the signals |
 | `dual_momentum.py` | Research-backed long/short dual/time-series momentum |
 | `mtf.py` | Multi-timeframe alignment (Triple-Screen style) + per-TF agent weighting |
-| `mcp_server.py` | MCP server — talk to the whole platform through Claude |
+| `mcp_server.py` | MCP server — connect the platform to compatible clients |
 
 ### The ensemble brain
 
@@ -125,13 +125,13 @@ It writes `state/scan_results.json`, which the dashboard's **Top picks** tab rea
 > [!CAUTION]
 > The scan ranks by the backtested composite — a **research shortlist, not a buy list** (the composite did not beat buy-and-hold). Tiny illiquid coins will appear; most have no tradable edge and brutal spreads. Treat high scores as "look closer", never "buy".
 
-## Talk to it through Claude (MCP server)
+## Connect an MCP client
 
-`mcp_server.py` exposes the whole platform as **Model-Context-Protocol tools**, so Claude Desktop / Claude Code can answer questions from your own engine — the honest version of "connect Claude to your trading app." It's **read-only insights + paper actions only — no real orders, no real money.**
+`mcp_server.py` exposes the whole platform as **Model-Context-Protocol tools** for compatible desktop clients. It provides **read-only insights and paper actions only — no real orders, no real money.**
 
 Tools: `insight`, `signal`, `committee`, `forecast`, `top_picks`, `options_idea`, `market_open`, `hit_rate`, `paper_portfolio`, `paper_buy`.
 
-**Connect it to Claude Desktop** — add this to `~/Library/Application Support/Claude/claude_desktop_config.json` (merge into the existing JSON), then restart Claude Desktop:
+**Connect it to your MCP client** — register a server definition such as the following, then restart the client:
 
 ```json
 {
@@ -144,7 +144,7 @@ Tools: `insight`, `signal`, `committee`, `forecast`, `top_picks`, `options_idea`
 }
 ```
 
-Then ask Claude things like *"what's the committee verdict on BTCUSDT?"*, *"scan crypto top picks"*, *"show my paper portfolio"*, *"what's the honest hit rate on crypto?"*.
+Then use prompts such as *"what's the committee verdict on BTCUSDT?"*, *"scan crypto top picks"*, *"show my paper portfolio"*, or *"what's the honest hit rate on crypto?"*.
 
 > Same honesty as everywhere: the tools surface signals, forecasts and *paper* trades — they don't place real orders or claim profit. `paper_buy` moves simulated money only.
 

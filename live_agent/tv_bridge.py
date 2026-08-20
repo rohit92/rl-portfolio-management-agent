@@ -3,8 +3,8 @@ tv_bridge.py — Bridge to TradingView Desktop via the tradingview-mcp CLI.
 
 TradingView Desktop (Electron) exposes the Chrome DevTools Protocol when
 launched with ``--remote-debugging-port=9222``. The cloned ``tradingview-mcp``
-repo (../tradingview-mcp) drives it — same engine that backs the MCP server
-Claude uses. This module shells out to its CLI so the *dashboard* can use
+repo (../tradingview-mcp) drives it — the same engine used by the MCP server.
+This module shells out to its CLI so the *dashboard* can use
 TradingView as a data source too:
 
   • TradingView carries licensed exchange data (incl. NSE/BSE) that our free
