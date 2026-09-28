@@ -19,6 +19,7 @@ import gymnasium as gym
 import numpy as np
 
 from utils.metrics import (
+    returns_from_values,
     annualized_return,
     calmar_ratio,
     max_drawdown,
@@ -70,7 +71,7 @@ class BuyAndHoldAgent:
             ``daily_returns``.  Identical schema to ``PPOTrader.evaluate()``.
         """
         obs, info = env.reset()
-        daily_returns: List[float] = []
+        portfolio_values: List[float] = []
         actions: List[int] = []
         terminated, truncated = False, False
         step: int = 0
@@ -82,19 +83,20 @@ class BuyAndHoldAgent:
                 action = 0  # HOLD for every subsequent step
 
             obs, reward, terminated, truncated, info = env.step(action)
-            daily_returns.append(float(reward))
+            portfolio_values.append(float(info["portfolio_value"]))
             actions.append(action)
             step += 1
 
         # --- Convert to numpy for metric functions ---
-        returns_array = np.array(daily_returns, dtype=np.float64)
+        values_array = np.array([float(env.unwrapped.initial_portfolio_value)] + portfolio_values, dtype=np.float64)
+        returns_array = returns_from_values(values_array)
         actions_array = np.array(actions, dtype=np.int32)
 
         # --- Equity curve: cumulative product of (1 + daily_return) ---
         initial_value: float = float(
             self.config.get("initial_portfolio_value", 10_000)
         )
-        equity_curve = initial_value * np.cumprod(1.0 + returns_array)
+        equity_curve = values_array[1:]  # actual portfolio value after each step
 
         # --- Compute risk/return metrics ---
         total_return = float(annualized_return(returns_array))
@@ -174,7 +176,7 @@ class RandomAgent:
         self._rng = np.random.default_rng(self.seed)
 
         obs, info = env.reset()
-        daily_returns: List[float] = []
+        portfolio_values: List[float] = []
         actions: List[int] = []
         terminated, truncated = False, False
 
@@ -185,18 +187,19 @@ class RandomAgent:
             # Sample uniformly from {0, 1, 2}
             action: int = int(self._rng.integers(low=0, high=n_actions))
             obs, reward, terminated, truncated, info = env.step(action)
-            daily_returns.append(float(reward))
+            portfolio_values.append(float(info["portfolio_value"]))
             actions.append(action)
 
         # --- Convert to numpy for metric functions ---
-        returns_array = np.array(daily_returns, dtype=np.float64)
+        values_array = np.array([float(env.unwrapped.initial_portfolio_value)] + portfolio_values, dtype=np.float64)
+        returns_array = returns_from_values(values_array)
         actions_array = np.array(actions, dtype=np.int32)
 
         # --- Equity curve: cumulative product of (1 + daily_return) ---
         initial_value: float = float(
             self.config.get("initial_portfolio_value", 10_000)
         )
-        equity_curve = initial_value * np.cumprod(1.0 + returns_array)
+        equity_curve = values_array[1:]  # actual portfolio value after each step
 
         # --- Compute risk/return metrics ---
         total_return = float(annualized_return(returns_array))
