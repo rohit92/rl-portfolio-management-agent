@@ -285,3 +285,17 @@ def calmar_ratio(
     logger.debug("Calmar ratio computed: %.4f  (ann_ret=%.4f, mdd=%.4f)",
                  result, ann_ret, mdd)
     return result
+
+
+def returns_from_values(values) -> np.ndarray:
+    """Simple per-step returns from a portfolio-value series.
+
+    ``values`` must start with the initial capital. Evaluation metrics are
+    computed from these *actual* portfolio returns — never from the shaped RL
+    reward, which also contains the transaction-cost, volatility and
+    invalid-action penalties (and is a log-return).
+    """
+    arr = np.asarray(values, dtype=np.float64)
+    if arr.size < 2:
+        return np.zeros(0, dtype=np.float64)
+    return np.diff(arr) / arr[:-1]

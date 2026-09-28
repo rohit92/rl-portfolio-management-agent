@@ -13,6 +13,13 @@
 
 This project applies the **Actor-Critic policy gradient framework** — the same algorithmic family used in model-based RL for autonomous driving — to sequential financial decision-making. The core insight is that portfolio management is a **Markov Decision Process**: the agent observes market state, takes actions (buy/sell/hold), and receives risk-adjusted rewards, exactly analogous to an autonomous agent observing sensor inputs and receiving driving rewards. Where a self-driving car must balance lane-keeping reward against collision penalty under partial observability, our trading agent must balance return against volatility and transaction costs under noisy market dynamics. Both problems demand policies that generalize from historical trajectories without overfitting to any single episode, and both benefit from PPO's stable, clipped-objective training — making this a natural bridge between robotics RL and quantitative finance.
 
+## Two systems in this repository
+
+1. **PPO research agent** (this README: `env/`, `agent/`, `train.py`, `evaluate.py`) — a single-asset PPO policy on daily AAPL data, evaluated offline against buy-and-hold and a random trader.
+2. **Live ensemble agent** (`live_agent/`, see its own README) — a separate, rule-based multi-signal ensemble (momentum, mean-reversion, trend) over a basket of symbols, with inverse-volatility sizing, per-name and gross exposure caps, and a persistent high-water-mark drawdown kill-switch. It executes on an **Alpaca paper account only** (`paper=True` is hard-coded; there is no live-money path). It was built after the PPO agent failed to show an edge; the PPO policy is **not** wired into it.
+
+Tests: `python tests/test_metrics.py` (17) and `cd live_agent && python -m unittest discover -s tests` (34).
+
 ---
 
 ## MDP Formulation
@@ -24,7 +31,7 @@ The trading problem is cast as a finite-horizon, episodic MDP:
 | **State *S*** | 20-day sliding window of OHLCV + technical indicators (daily return, 5-day rolling volatility, 10-day and 20-day MA ratios) + portfolio state (current position, unrealized PnL) |
 | **Action *A*** | `Discrete(3)`: Hold = 0, Buy = 1, Sell = 2 |
 | **Reward *R*** | `log(portfolio_value_t / portfolio_value_{t-1}) − transaction_cost × |trade| − λ × realized_volatility` |
-| **Transition *T*** | Deterministic execution at next day's open; market dynamics are exogenous and stochastic |
+| **Transition *T*** | The agent decides after observing day *t*'s close and P&L assumes a fill at that close (market-on-close); a stricter backtest would fill at the next open. Market dynamics are exogenous |
 | **Episode** | One calendar year of trading data (≈ 252 trading days) |
 | **Discount *γ*** | 0.99 — standard for finite-horizon MDPs with daily steps |
 
@@ -64,8 +71,8 @@ The trading problem is cast as a finite-horizon, episodic MDP:
                               │                        ▼
                        ┌──────┴───────┐     ┌──────────────────┐
                        │  Market Exec │◀────│  Action          │
-                       │  (next-day   │     │  {Hold,Buy,Sell} │
-                       │   open fill) │     └──────────────────┘
+                       │  (fill at    │     │  {Hold,Buy,Sell} │
+                       │   close t)   │     └──────────────────┘
                        └──────┬───────┘
                               │
                               ▼
@@ -169,23 +176,28 @@ rl-trading-agent/
 
 ## Results
 
-> *Populate this table after running `python evaluate.py`. All metrics are computed on the **out-of-sample test set** (2023-01-01 to 2023-12-31).*
+Out-of-sample test set: **AAPL, 2023-01-03 → 2023-12-29** (250 trading days; 230 decisions after the 20-day lookback), $10,000 start, 10 bps per trade. Reproduce with `python evaluate.py --checkpoint checkpoints/ppo_final.zip`.
 
-| Agent | Annual Return | Sharpe Ratio | Max Drawdown | Win Rate | Calmar Ratio |
+| Agent | Total return | Annualised return | Sharpe | Max drawdown | Time in market |
 |---|---|---|---|---|---|
-| **PPO** | — | — | — | — | — |
-| **Buy-and-Hold** | — | — | — | — | — |
-| **Random** | — | — | — | — | — |
+| **Buy-and-Hold** | +34.0% | +37.9% | 1.73 | 14.9% | 100% |
+| **PPO (final, 500k steps)** | +33.0% | +36.7% | 1.68 | 14.9% | 100% |
+| **PPO (best validation checkpoint)** | +15.1% | +16.6% | 0.96 | 18.3% | 83% |
+| **Random** | +14.4% | +15.9% | 1.16 | 6.9% | 49% |
+
+**Reading the result honestly:** the final policy stayed invested for the whole test year, so it effectively learned buy-and-hold and matched it minus one transaction cost. The validation-selected checkpoint did worse. 2023 was a strong up-year for AAPL, where any long exposure looks good (even the random agent made +14%). This project does **not** demonstrate an edge; its value is the honest evaluation setup (strict date split, training-only normalisation, baselines).
+
+**Evaluation bug found and fixed:** earlier versions computed every metric from the per-step RL *reward*, which is a log-return that also contains the transaction-cost, volatility and invalid-action penalties — so all agents' returns were understated (buy-and-hold showed ~+5% while the stock rose ~50%). Metrics now use the environment's actual portfolio value (`utils.metrics.returns_from_values`), with a regression test in `tests/test_metrics.py`. Note that `ppo_best.zip` was selected during training using the old reward-based validation Sharpe, which favoured low-exposure policies.
 
 **Metric Definitions:**
 
 | Metric | Formula | Interpretation |
 |---|---|---|
-| Annual Return | `(V_final / V_initial) − 1` | Total percentage gain over the test year |
+| Annualised return | `(V_final / V_initial)^(252/N) − 1` | Total gain scaled to a 252-day year |
 | Sharpe Ratio | `mean(daily_returns) / std(daily_returns) × √252` | Risk-adjusted return (> 1.0 is good, > 2.0 is excellent) |
 | Max Drawdown | `max(peak − trough) / peak` | Worst peak-to-trough loss (lower is better) |
-| Win Rate | `count(profitable_days) / count(total_days)` | Fraction of days with positive returns |
-| Calmar Ratio | `Annual Return / Max Drawdown` | Return per unit of tail risk |
+| Win Rate | `count(profitable_days) / count(non-flat_days)` | Fraction of non-zero-return days that were positive |
+| Calmar Ratio | `Annualised return / Max Drawdown` | Return per unit of worst loss |
 
 ---
 
@@ -199,7 +211,7 @@ Every non-obvious choice in this project is documented here.
 reward = log(portfolio_value_t / portfolio_value_{t-1})
 ```
 
-Log returns are **time-additive** (they sum across periods), which aligns with how the RL discount factor aggregates rewards. Arithmetic returns are multiplicative and can mislead the value function — a +50% gain followed by a −50% loss is a net −25% arithmetically but 0 in log space, which correctly reflects the asymmetry. Log returns also have better statistical properties (closer to normally distributed), which stabilizes gradient estimation.
+Log returns are **time-additive** (they sum across periods), which aligns with how the RL discount factor aggregates rewards. Simple returns compound multiplicatively, so summing them misstates growth — a +50% gain followed by a −50% loss sums to 0% in simple returns, yet the true result is −25%; the log returns, ln(1.5) + ln(0.5) = ln(0.75) ≈ −0.288, add up to exactly that −25%. Log returns also have better statistical properties (closer to normally distributed), which stabilizes gradient estimation.
 
 ### 2. Transaction Cost Penalty (Prevents Overtrading)
 

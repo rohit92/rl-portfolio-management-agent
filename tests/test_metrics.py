@@ -82,5 +82,26 @@ class TestCalmarRatio(unittest.TestCase):
         self.assertAlmostEqual(metrics.calmar_ratio(ret, eq), expected)
 
 
+class TestReturnsFromValues(unittest.TestCase):
+    """Evaluation must use portfolio value, not the shaped RL reward."""
+
+    def test_simple_returns_from_portfolio_values(self):
+        r = metrics.returns_from_values([100.0, 110.0, 99.0])
+        self.assertEqual(len(r), 2)
+        self.assertAlmostEqual(r[0], 0.10)
+        self.assertAlmostEqual(r[1], -0.10)
+
+    def test_compounding_recovers_total_return(self):
+        values = [10_000.0, 10_500.0, 10_200.0, 13_404.0]
+        r = metrics.returns_from_values(values)
+        total = 1.0
+        for x in r:
+            total *= 1.0 + x
+        self.assertAlmostEqual(total - 1.0, values[-1] / values[0] - 1.0)
+
+    def test_too_few_points_is_empty(self):
+        self.assertEqual(len(metrics.returns_from_values([100.0])), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

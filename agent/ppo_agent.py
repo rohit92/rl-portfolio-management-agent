@@ -22,6 +22,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
 from utils.metrics import (
+    returns_from_values,
     annualized_return,
     calmar_ratio,
     max_drawdown,
@@ -86,17 +87,18 @@ class ValidationCallback(BaseCallback):
 
         # --- Run one full deterministic episode on the validation env ---
         obs, info = self.val_env.reset()
-        daily_returns: List[float] = []
+        portfolio_values: List[float] = []
         terminated, truncated = False, False
 
         while not (terminated or truncated):
             # Deterministic action selection — no exploration noise
             action, _states = self.model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = self.val_env.step(action)
-            daily_returns.append(float(reward))
+            portfolio_values.append(float(info["portfolio_value"]))
 
         # --- Compute Sharpe on the validation episode ---
-        returns_array = np.array(daily_returns, dtype=np.float64)
+        values_array = np.array([float(self.val_env.unwrapped.initial_portfolio_value)] + portfolio_values, dtype=np.float64)
+        returns_array = returns_from_values(values_array)
         val_sharpe = float(sharpe_ratio(returns_array))
 
         # Record for later analysis / plotting
@@ -278,7 +280,7 @@ class PPOTrader:
                 - ``daily_returns``: per-step returns (np.ndarray)
         """
         obs, info = env.reset()
-        daily_returns: List[float] = []
+        portfolio_values: List[float] = []
         actions: List[int] = []
         terminated, truncated = False, False
 
@@ -286,11 +288,12 @@ class PPOTrader:
             # Deterministic policy — no stochastic exploration
             action, _states = self.model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = env.step(action)
-            daily_returns.append(float(reward))
+            portfolio_values.append(float(info["portfolio_value"]))
             actions.append(int(action))
 
         # --- Convert to numpy for metric computation ---
-        returns_array = np.array(daily_returns, dtype=np.float64)
+        values_array = np.array([float(env.unwrapped.initial_portfolio_value)] + portfolio_values, dtype=np.float64)
+        returns_array = returns_from_values(values_array)
         actions_array = np.array(actions, dtype=np.int32)
 
         # --- Build equity curve from daily returns ---
@@ -298,7 +301,7 @@ class PPOTrader:
             self.config.get("initial_portfolio_value", 10_000)
         )
         # Cumulative product of (1 + r_t) scaled by initial capital
-        equity_curve = initial_value * np.cumprod(1.0 + returns_array)
+        equity_curve = values_array[1:]  # actual portfolio value after each step
 
         # --- Compute all risk/return metrics ---
         total_return = float(annualized_return(returns_array))
